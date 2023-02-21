@@ -5,7 +5,7 @@ P_COL_START = 27
 function start() {
  // Please update line 7 and 8 to match your sheet data and reflect what you want!
  var oldSheetName = 'Test'; // old data sheet of processed data
- var newSheetName = 'Test1'; // new data sheet - does not replace your processed data sheet
+ var newSheetName = 'New_test'; // new data sheet - does not replace your processed data sheet
  const columnsToExclude = ['Scout Name', 'City', 'State', 'Postal Code', 'Education Level', 'Research Industry', 'Entry Headline', 'Time Zone', 'Latitude', 'Longitude', 'User Agent']; //make sure these columns are the same as the ones you initially removed
 
 
@@ -13,8 +13,10 @@ function start() {
 
   // Get data and header for old data
   var oldSheet = SpreadsheetApp.getActive().getSheetByName(oldSheetName);
-  const oldData = oldSheet.getDataRange().getValues();
-  const header = [oldData[0]];
+  var newSheet = SpreadsheetApp.getActive().getSheetByName(newSheetName);
+  const oldSheetData = oldSheet.getDataRange().getValues();
+  var newSheetData = newSheet.getDataRange().getValues();
+  const header = [oldSheetData[0]];
 
   // Define the column in which to look for Entry IDs
   var entryIdColumn = 'Entry ID';
@@ -45,13 +47,31 @@ function start() {
 
   var entryIdColumnIndex = find_column_index_from_column_name(header[0], entryIdColumn);
   
-  // Sort old sheet based on Entry ID column
-  function sortOldSheet(sheet, colIndex) { 
+  // Sort new sheet based on Entry ID column
+  function sortSheet(sheet, colIndex) { 
     var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
     rows.sort(colIndex);
+    Logger.log("New sheet is sorted by Entry ID");
+    var sortedData = sheet.getDataRange().getValues();
+    return sortedData;
   }; 
 
-  sortOldSheet(oldSheet, entryIdColumnIndex);
+  newSheetData = sortSheet(newSheet, entryIdColumnIndex); //need to update new sheet data
+
+  // Start writing data from new sheet at entry ID that is greater than highest entry ID from old sheet
+  function write_new_data(data, highestEntryId) {
+    for (var i = 0; i < data.length; i++) {
+      for (var j = 0; j < data[i].length; j++) {
+        if(data[i][j] == highestEntryId) {
+          var updatedDataStartingRow = i + 2;
+          break;
+        }
+      }
+    }
+    return updatedDataStartingRow;
+  }
+
+  newDataStartingRow = write_new_data(newSheetData, maxEntry);
 
   // const columnName = 'Part';
   // P_COL_START -= columnsToExclude.length;
