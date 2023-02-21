@@ -12,14 +12,15 @@ function start() {
   //////////////////////////// DO NOT MODIFY ANYTHING BELOW FROM HERE unless you know what you are doing :D ////////// /////////
 
   // Get data and header for old data
-  var sheet = SpreadsheetApp.getActive().getSheetByName(oldSheetName);
-  const data = sheet.getDataRange().getValues();
-  const header = [data[0]];
+  var oldSheet = SpreadsheetApp.getActive().getSheetByName(oldSheetName);
+  const oldData = oldSheet.getDataRange().getValues();
+  const header = [oldData[0]];
 
   // Define the column in which to look for Entry IDs
   var entryIdColumn = 'Entry ID';
   const columnIndex = find_column_index_from_column_name(header[0], entryIdColumn)
 
+  // Get the highest entry ID from the old datasheet
   function getHighestEntryId(sheet, column) {
     var entryIdsNumeric = [];
     const rg = sheet.getRange(1 + HEADERS_ROW_INDEX, column, sheet.getLastRow() - HEADERS_ROW_INDEX, 1);
@@ -32,10 +33,25 @@ function start() {
     return maxEntryId;
   }
 
-  const maxEntry = getHighestEntryId(sheet, columnIndex);
+  const maxEntry = getHighestEntryId(oldSheet, columnIndex);
 
-  // Now write a function for 
+  function find_column_index_from_column_name(header, columnName) {
+    for (var i = 0; i < header.length; i++) {
+      if (header[i] == columnName) {
+        return i+1;
+      }
+    }
+  }
 
+  var entryIdColumnIndex = find_column_index_from_column_name(header[0], entryIdColumn);
+  
+  // Sort old sheet based on Entry ID column
+  function sortOldSheet(sheet, colIndex) { 
+    var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    rows.sort(colIndex);
+  }; 
+
+  sortOldSheet(oldSheet, entryIdColumnIndex);
 
   // const columnName = 'Part';
   // P_COL_START -= columnsToExclude.length;
