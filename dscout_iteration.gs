@@ -20,7 +20,8 @@ function start() {
 
   // Define the column in which to look for Entry IDs
   var entryIdColumn = 'Entry ID';
-  const columnIndex = find_column_index_from_column_name(header[0], entryIdColumn)
+  var entryIdColumnIndex = find_column_index_from_column_name(header[0], entryIdColumn)
+  Logger.log("This is the EntryId Column index: " + entryIdColumnIndex);
 
   // Get the highest entry ID from the old datasheet
   function getHighestEntryId(sheet, column) {
@@ -35,7 +36,7 @@ function start() {
     return maxEntryId;
   }
 
-  const maxEntry = getHighestEntryId(oldSheet, columnIndex);
+  const maxEntry = getHighestEntryId(oldSheet, entryIdColumnIndex);
 
   function find_column_index_from_column_name(header, columnName) {
     for (var i = 0; i < header.length; i++) {
@@ -44,8 +45,6 @@ function start() {
       }
     }
   }
-
-  var entryIdColumnIndex = find_column_index_from_column_name(header[0], entryIdColumn);
   
   // Sort new sheet based on Entry ID column
   function sortSheet(sheet, colIndex) { 
@@ -58,20 +57,20 @@ function start() {
 
   newSheetData = sortSheet(newSheet, entryIdColumnIndex); //need to update new sheet data
 
-  // Start writing data from new sheet at entry ID that is greater than highest entry ID from old sheet
-  function write_new_data(data, highestEntryId) {
-    for (var i = 0; i < data.length; i++) {
-      for (var j = 0; j < data[i].length; j++) {
-        if(data[i][j] == highestEntryId) {
-          var updatedDataStartingRow = i + 2;
+  // Get the row with the highest entry ID
+  function getHighestEntryRow(data, colIndex, highestEntryId) {
+      for (var i = 0; i < data.length; i++) {
+        if(data[i][colIndex-1] == highestEntryId) {
+          var highestEntryRow = i + 1;
           break;
         }
       }
-    }
-    return updatedDataStartingRow;
+    return highestEntryRow;
   }
 
-  newDataStartingRow = write_new_data(newSheetData, maxEntry);
+  var highestEntryIdRow = getHighestEntryRow(newSheetData, entryIdColumnIndex, maxEntry);
+
+
 
   // const columnName = 'Part';
   // P_COL_START -= columnsToExclude.length;
