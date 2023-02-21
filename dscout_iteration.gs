@@ -45,8 +45,16 @@ function start() {
       }
     }
   }
+
+   // Make a copy of the sheet for editing
+  var tempNewSheet = newSheet.copyTo(SpreadsheetApp.getActiveSpreadsheet());
+  var copiedNewSheetName = "updated_processed_" + newSheetName;
+  var copiedSheet = SpreadsheetApp.getActive().getSheetByName(copiedNewSheetName);
+  var copiedData = copiedSheet.getDataRange().getValues();
+
+  tempNewSheet.setName(copiedNewSheetName);
   
-  // Sort new sheet based on Entry ID column
+  // Sort copied sheet based on Entry ID column
   function sortSheet(sheet, colIndex) { 
     var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
     rows.sort(colIndex);
@@ -55,7 +63,7 @@ function start() {
     return sortedData;
   }; 
 
-  newSheetData = sortSheet(newSheet, entryIdColumnIndex); //need to update new sheet data
+  newSheetData = sortSheet(copiedSheet, entryIdColumnIndex); //need to update new sheet data
 
   // Get the row with the highest entry ID
   function getHighestEntryRow(data, colIndex, highestEntryId) {
@@ -68,7 +76,17 @@ function start() {
     return highestEntryRow;
   }
 
-  var highestEntryIdRow = getHighestEntryRow(newSheetData, entryIdColumnIndex, maxEntry);
+  var highestEntryIdRow = getHighestEntryRow(copiedData, entryIdColumnIndex, maxEntry);
+
+  // // // Delete any rows less than or equal to the highest entry ID
+  // function deleteProcessedData(sheet, highestEntryRow) {
+  //   var numberRowsToDelete = highestEntryRow - 1; 
+  //   sheet.deleteRows(2, numberRowsToDelete);
+  // }
+
+  // deleteProcessedData(copiedNewSheetName, highestEntryIdRow);
+
+  // From here, we likely just want to continue as usual, except that we will be reading in from a different row
 
 
 
