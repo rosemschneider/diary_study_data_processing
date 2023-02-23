@@ -23,28 +23,8 @@ function start() {
   var entryIdColumnIndex = find_column_index_from_column_name(header[0], entryIdColumn)
   Logger.log("This is the EntryId Column index: " + entryIdColumnIndex);
 
-  // Get the highest entry ID from the old datasheet
-  function getHighestEntryId(sheet, column) {
-    var entryIdsNumeric = [];
-    const rg = sheet.getRange(1 + HEADERS_ROW_INDEX, column, sheet.getLastRow() - HEADERS_ROW_INDEX, 1);
-    const entryIds = getUnique1_(rg.getValues()).map(e => [e]);
-    for (var i = 0; i < entryIds.length; i++) {
-      entryIdsNumeric.push(parseInt(entryIds[i]));
-    }
-    var maxEntryId = Math.max.apply(Math, entryIdsNumeric);
-    Logger.log("The highest Entry ID in the dataset is: '" + maxEntryId);
-    return maxEntryId;
-  }
-
+  // Get the highest entry from the old data seet
   const maxEntry = getHighestEntryId(oldDataSheetFull, entryIdColumnIndex);
-
-  function find_column_index_from_column_name(header, columnName) {
-    for (var i = 0; i < header.length; i++) {
-      if (header[i] == columnName) {
-        return i+1;
-      }
-    }
-  }
 
    // Make a copy of the sheet for editing
   var tempNewSheet = newDataSheetFull.copyTo(SpreadsheetApp.getActiveSpreadsheet());
@@ -54,29 +34,11 @@ function start() {
   var copiedData = copiedSheet.getDataRange().getValues();
   const columnsToExcludeInIndex = [];
   const copiedSheetHeader = [copiedData[0]];
-  
-  // Sort copied sheet based on Entry ID column
-  function sortSheet(sheet, colIndex) { 
-    var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
-    rows.sort(colIndex);
-    Logger.log("New sheet is sorted by Entry ID");
-    var sortedData = sheet.getDataRange().getValues();
-    return sortedData;
-  }; 
 
+  // Sort new data sheet by Entry ID
   newSheetData = sortSheet(copiedSheet, entryIdColumnIndex); //need to update new sheet data
 
-  // Get the row with the highest entry ID
-  function getHighestEntryRow(data, colIndex, highestEntryId) {
-      for (var i = 0; i < data.length; i++) {
-        if(data[i][colIndex-1] == highestEntryId) {
-          var highestEntryRow = i + 1;
-          break;
-        }
-      }
-    return highestEntryRow;
-  }
-
+  // get the row with the highest Entry ID
   var highestEntryIdRow = getHighestEntryRow(copiedData, entryIdColumnIndex, maxEntry);
 
 //on the updated processed data sheet, exclude columns to exclude so that it matches the original sheet
@@ -284,6 +246,32 @@ function createSheet(newSheetName) {
    return yourNewSheet;
 }
 
+/*
+* Helper function for getting the highest entry ID from the old data sheet
+*/
+  function getHighestEntryId(sheet, column) {
+    var entryIdsNumeric = [];
+    const rg = sheet.getRange(1 + HEADERS_ROW_INDEX, column, sheet.getLastRow() - HEADERS_ROW_INDEX, 1);
+    const entryIds = getUnique1_(rg.getValues()).map(e => [e]);
+    for (var i = 0; i < entryIds.length; i++) {
+      entryIdsNumeric.push(parseInt(entryIds[i]));
+    }
+    var maxEntryId = Math.max.apply(Math, entryIdsNumeric);
+    Logger.log("The highest Entry ID in the dataset is: '" + maxEntryId);
+    return maxEntryId;
+  }
+
+  /*
+  * Helper function for sorting sheet by a particular column
+  */
+  function sortSheet(sheet, colIndex) { 
+    var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn());
+    rows.sort(colIndex);
+    Logger.log("New sheet is sorted by Entry ID");
+    var sortedData = sheet.getDataRange().getValues();
+    return sortedData;
+  }; 
+
 
 /*
 * Helper function for getting the name of the column.
@@ -291,6 +279,31 @@ function createSheet(newSheetName) {
 function getColumnName(sheet, column) {
  return sheet.getRange(HEADERS_ROW_INDEX, column).getValue();
 }
+
+/*
+* Helper function for getting the row corresponding to the highest entry ID
+*/
+  function getHighestEntryRow(data, colIndex, highestEntryId) {
+      for (var i = 0; i < data.length; i++) {
+        if(data[i][colIndex-1] == highestEntryId) {
+          var highestEntryRow = i + 1;
+          break;
+        }
+      }
+    return highestEntryRow;
+  }
+
+
+/*
+* Helper function for getting the index of column from column name
+*/
+ function find_column_index_from_column_name(header, columnName) {
+    for (var i = 0; i < header.length; i++) {
+      if (header[i] == columnName) {
+        return i+1;
+      }
+    }
+  }
 
 
 /*
