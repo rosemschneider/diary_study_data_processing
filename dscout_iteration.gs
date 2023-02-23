@@ -4,18 +4,18 @@ P_COL_START = 27
 
 function start() {
  // Please update line 7 and 8 to match your sheet data and reflect what you want!
- var oldSheetName = 'Test'; // old data sheet of processed data
- var newSheetName = 'New_test'; // new data sheet - does not replace your processed data sheet
+ var oldDataSheetName = 'Test'; // old data sheet of processed data
+ var newDataSheetName = 'New_test'; // new data sheet - does not replace your processed data sheet
  const columnsToExclude = ['Scout Name', 'City', 'State', 'Postal Code', 'Education Level', 'Research Industry', 'Entry Headline', 'Time Zone', 'Latitude', 'Longitude', 'User Agent']; //make sure these columns are the same as the ones you initially removed
 
 
   //////////////////////////// DO NOT MODIFY ANYTHING BELOW FROM HERE unless you know what you are doing :D ////////// /////////
 
   // Get data and header for old data
-  var oldSheet = SpreadsheetApp.getActive().getSheetByName(oldSheetName);
-  var newSheet = SpreadsheetApp.getActive().getSheetByName(newSheetName);
-  const oldSheetData = oldSheet.getDataRange().getValues();
-  var newSheetData = newSheet.getDataRange().getValues();
+  var oldDataSheetFull = SpreadsheetApp.getActive().getSheetByName(oldDataSheetName);
+  var newDataSheetFull = SpreadsheetApp.getActive().getSheetByName(newDataSheetName);
+  const oldSheetData = oldDataSheetFull.getDataRange().getValues();
+  var newSheetData = newDataSheetFull.getDataRange().getValues();
   const header = [oldSheetData[0]];
 
   // Define the column in which to look for Entry IDs
@@ -36,7 +36,7 @@ function start() {
     return maxEntryId;
   }
 
-  const maxEntry = getHighestEntryId(oldSheet, entryIdColumnIndex);
+  const maxEntry = getHighestEntryId(oldDataSheetFull, entryIdColumnIndex);
 
   function find_column_index_from_column_name(header, columnName) {
     for (var i = 0; i < header.length; i++) {
@@ -47,12 +47,13 @@ function start() {
   }
 
    // Make a copy of the sheet for editing
-  var tempNewSheet = newSheet.copyTo(SpreadsheetApp.getActiveSpreadsheet());
-  var copiedNewSheetName = "updated_processed_" + newSheetName;
+  var tempNewSheet = newDataSheetFull.copyTo(SpreadsheetApp.getActiveSpreadsheet());
+  var copiedNewSheetName = "updated_processed_" + newDataSheetName;
+  tempNewSheet.setName(copiedNewSheetName);
   var copiedSheet = SpreadsheetApp.getActive().getSheetByName(copiedNewSheetName);
   var copiedData = copiedSheet.getDataRange().getValues();
-
-  tempNewSheet.setName(copiedNewSheetName);
+  const columnsToExcludeInIndex = [];
+  const copiedSheetHeader = [copiedData[0]];
   
   // Sort copied sheet based on Entry ID column
   function sortSheet(sheet, colIndex) { 
@@ -78,143 +79,140 @@ function start() {
 
   var highestEntryIdRow = getHighestEntryRow(copiedData, entryIdColumnIndex, maxEntry);
 
-  // // // Delete any rows less than or equal to the highest entry ID
-  // function deleteProcessedData(sheet, highestEntryRow) {
-  //   var numberRowsToDelete = highestEntryRow - 1; 
-  //   sheet.deleteRows(2, numberRowsToDelete);
-  // }
+//on the updated processed data sheet, exclude columns to exclude so that it matches the original sheet
+  const columnName = 'Part';
+  P_COL_START -= columnsToExclude.length;
 
-  // deleteProcessedData(copiedNewSheetName, highestEntryIdRow);
+//Exclude columns
+  for (var i = 0; i < columnsToExclude.length; i++) {
+    columnsToExcludeInIndex.push(find_column_index_from_column_name(copiedSheetHeader[0], columnsToExclude[i]));
+  }
+  columnsToExcludeInIndex.sort(function(a, b) {
+    return a - b;
+  });
+
+
+  Logger.log("I will remove " + columnsToExcludeInIndex.length + " columns and these are the columns I will remove: " + columnsToExcludeInIndex);
+  for (var j = columnsToExcludeInIndex.length - 1; j >=0; j--) {
+    copiedSheet.deleteColumn(columnsToExcludeInIndex[j]);
+  }
+
+  // // Delete any rows less than or equal to the highest entry ID
+  function deleteProcessedData(sheet, highestEntryRow) {
+    var numberRowsToDelete = highestEntryRow - 1; 
+    sheet.deleteRows(HEADERS_ROW_INDEX + 1, numberRowsToDelete);
+  }
+
+  deleteProcessedData(copiedSheet, highestEntryIdRow);
+
+  // Because we have deleted columns on the processed sheet, we now need to basically redo the process of splitting data
+  // we'll copy that new data to the already existing sheets
+  // then delete the sheets we've created in the process
 
   // From here, we likely just want to continue as usual, except that we will be reading in from a different row
 
+    run_group_by(copiedNewSheetName, columnName);
+  }
 
 
-  // const columnName = 'Part';
-  // P_COL_START -= columnsToExclude.length;
-
-
-  // // Make a copy of the original sheet with excluded columns removed. 
-  // // Additional data processing run on the copied sheet.
-  //  var sheet = SpreadsheetApp.getActive().getSheetByName(sheetName);
-  //  var tempOriginalSheet = sheet.copyTo(SpreadsheetApp.getActiveSpreadsheet());
-  //  tempOriginalSheet.setName("processed_" + sheetName);
-
-
-  //  sheetName = "processed_" + sheetName;
-  //  sheet = tempOriginalSheet;
-
-
-  //  const columnsToExcludeInIndex = []
-  //  const data = sheet.getDataRange().getValues();
-  //  const header = [data[0]];
-
-  // //Exclude columns
-  //  for (var i = 0; i < columnsToExclude.length; i++) {
-  //    columnsToExcludeInIndex.push(find_column_index_from_column_name(header[0], columnsToExclude[i]));
-  //  }
-  //   columnsToExcludeInIndex.sort(function(a, b) {
-  //    return a - b;
-  //  });
-
-
-  //  Logger.log("I will remove " + columnsToExcludeInIndex.length + " columns and these are the columns I will remove: " + columnsToExcludeInIndex);
-  //  for (var j = columnsToExcludeInIndex.length - 1; j >=0; j--) {
-  //    sheet.deleteColumn(columnsToExcludeInIndex[j]);
-  //  }
-  //   run_group_by(sheetName, columnName);
-  // }
-
-
-  // function find_column_index_from_column_name(header, columnName) {
-  //  for (var i = 0; i < header.length; i++) {
-  //    if (header[i] == columnName) {
-  //      return i+1;
-  //    }
-  //  }
-  // }
+  function find_column_index_from_column_name(header, columnName) {
+   for (var i = 0; i < header.length; i++) {
+     if (header[i] == columnName) {
+       return i+1;
+     }
+   }
+  }
 
   // This function does the following: 
   // 1. Gets unique part values
   // 2. Filters data 
-  // function run_group_by(sheetName, columnName) {
-  //   // get active sheet, data on that sheet, and define where the header is on that sheet
-  //   const sheet = SpreadsheetApp.getActive().getSheetByName(sheetName);
-  //   const data = sheet.getDataRange().getValues();
-  //   const header = [data[0]]; 
+  function run_group_by(sheetName, columnName) {
+    // get active sheet, data on that sheet, and define where the header is on that sheet
+    const sheet = SpreadsheetApp.getActive().getSheetByName(sheetName);
+    const data = sheet.getDataRange().getValues();
+    const header = [data[0]]; 
 
-  //   // Define the column in which to look for Part values
-  //   const columnIndex = find_column_index_from_column_name(header[0], columnName)
 
-  //   // Get unique Part values and sort them numerically
-  //   const uniqueValues = getUniqueColumn(sheet, columnIndex);
-  //     uniqueValues.sort(function(a, b) {
-  //     return a - b;
-  //   });
+    // Define the column in which to look for Part values
+    const columnIndex = find_column_index_from_column_name(header[0], columnName);
 
-  //   // Get the lowest Part value
-  //   const lowest_part_num = Math.min(parseInt(uniqueValues));
+    // Get unique Part values and sort them numerically
+    const uniqueValues = getUniqueColumn(sheet, columnIndex);
+      uniqueValues.sort(function(a, b) {
+      return a - b;
+    });
 
-  //   // Define where we will start scanning data (L->R). This is the LAST column BEFORE data from Parts. 
-  //   // Defining this flexibly because users may sometimes have non-data columns after "Part"
-  //   const scanning_start_col = get_scanning_start_column(header[0], lowest_part_num);
+    // Get the lowest Part value
+    const lowest_part_num = Math.min(parseInt(uniqueValues));
 
-  //   // Now start a for loop where we will (by each Part): 
-  //   // 1. Filter data by Part
-  //   // 2. Created a new sheet for that data
-  //   // 3. Get the first column for which we have data. IF there are empty data columns (ie data coming from Parts) before that, bulk delete them. This is the FIRST PASS.
-  //   // 4. After we have anything unnecesary BEFORE the data deleted, we do a SECOND PASS to delete anything unnecessary AFTER the data.
+    // Define where we will start scanning data (L->R). This is the LAST column BEFORE data from Parts. 
+    // Defining this flexibly because users may sometimes have non-data columns after "Part"
+    const scanning_start_col = get_scanning_start_column(header[0], lowest_part_num);
 
-  //   // Begin for loop
-  //   for (var i = 0; i < uniqueValues.length; i++) {
-  //     // filter data by part
-  //     const filteredData = data.filter(function(row) {
-  //         return row[columnIndex-1] == uniqueValues[i][0];
-  //     });
+    // Now start a for loop where we will (by each Part): 
+    // 1. Filter data by Part
+    // 2. Created a new sheet for that data
+    // 3. Get the first column for which we have data. IF there are empty data columns (ie data coming from Parts) before that, bulk delete them. This is the FIRST PASS.
+    // 4. After we have anything unnecesary BEFORE the data deleted, we do a SECOND PASS to delete anything unnecessary AFTER the data.
 
-  //     //Create a sheet for data 
-  //     const newSheet = createSheet(sheetName+'_'+getColumnName(sheet, columnIndex)+'='+uniqueValues[i][0]);
-  //     newSheet.getRange(HEADERS_ROW_INDEX, 1, header.length, header[0].length).setValues(header);
-  //     newSheet.getRange(HEADERS_ROW_INDEX + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
-  //     SpreadsheetApp.flush();
+    // for (var i = 0; i < uniqueValues.length; i++) {
+    //   var testRows = [];
+    //   // if(data[i][columnIndex] == uniqueValues[i][0]) {
+    //   //   testRows.push[data[i]];
+    //   // }
+    //   Logger.log("Here are the test rows:" + data[i][columnIndex-1]);
+    // }
+     
+    // Begin for loop
+    for (var i = 0; i < uniqueValues.length; i++) {
+      // filter data by part
+      const filteredData = data.filter(function(row) {
+          return row[columnIndex-1] == uniqueValues[i][0];
+      });
+
+      //Create a sheet for data 
+      const newSheet = createSheet(sheetName+'_'+getColumnName(sheet, columnIndex)+'='+uniqueValues[i][0]);
+      newSheet.getRange(HEADERS_ROW_INDEX, 1, header.length, header[0].length).setValues(header);
+      newSheet.getRange(HEADERS_ROW_INDEX + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
+      SpreadsheetApp.flush();
       
-  //     //Get the first column for which we have data in this Part
-  //     const first_data_col = get_first_column_part_data(header, uniqueValues[i][0], scanning_start_col);
+      //Get the first column for which we have data in this Part
+      const first_data_col = get_first_column_part_data(header, uniqueValues[i][0], scanning_start_col);
 
-  //     // BEGIN FIRST PASS
-  //     // If there are empty data columns before this column, delete them
-  //     // Empty columns determined by looking at first column after our "scanning start" var and our "first data col" var
-  //      if (first_data_col - (scanning_start_col + 1) != 0) { // If there are empty columns
-  //        // create variables for Google column numbers for bulk deletion because deleteColumns is 1-indexed, but apps script is 0-indexed
-  //        // deleteColumns needs where to start deleting and how many columns to delete after
-  //         var googleScanningStart = scanning_start_col + 2;
-  //         var googleFirstDataCol = first_data_col + 1;
-  //         var googleNumberColsToDelete = googleFirstDataCol - googleScanningStart;
-  //       newSheet.deleteColumns(googleScanningStart, googleNumberColsToDelete); 
-  //     }
+      // BEGIN FIRST PASS
+      // If there are empty data columns before this column, delete them
+      // Empty columns determined by looking at first column after our "scanning start" var and our "first data col" var
+       if (first_data_col - (scanning_start_col + 1) != 0) { // If there are empty columns
+         // create variables for Google column numbers for bulk deletion because deleteColumns is 1-indexed, but apps script is 0-indexed
+         // deleteColumns needs where to start deleting and how many columns to delete after
+          var googleScanningStart = scanning_start_col + 2;
+          var googleFirstDataCol = first_data_col + 1;
+          var googleNumberColsToDelete = googleFirstDataCol - googleScanningStart;
+        newSheet.deleteColumns(googleScanningStart, googleNumberColsToDelete); 
+      }
 
-  //     // Alert so we know this has been done
-  //     Logger.log("I am 50% done working on " + newSheet.getSheetName());
+      // Alert so we know this has been done
+      Logger.log("I am 50% done working on " + newSheet.getSheetName());
 
-  //     // BEGIN SECOND PASS
-  //     // Because we've had some deletions, we need to update the header so we're indexing appropriately
-  //     const second_pass_data = newSheet.getDataRange().getValues();
-  //     const second_pass_header = [second_pass_data[0]];
+      // BEGIN SECOND PASS
+      // Because we've had some deletions, we need to update the header so we're indexing appropriately
+      const second_pass_data = newSheet.getDataRange().getValues();
+      const second_pass_header = [second_pass_data[0]];
 
-  //     //Now get where we need to start deleting from and how many cols to delete in the second pass
-  //     const second_pass_delete_start = get_first_column_without_data(second_pass_header, uniqueValues[i][0],  scanning_start_col);
-  //     var lastColumn = newSheet.getLastColumn(); 
+      //Now get where we need to start deleting from and how many cols to delete in the second pass
+      const second_pass_delete_start = get_first_column_without_data(second_pass_header, uniqueValues[i][0],  scanning_start_col);
+      var lastColumn = newSheet.getLastColumn(); 
       
-  //     // now bulk delete columns on the second pass
-  //     if (lastColumn - second_pass_delete_start != 0) {
-  //       // create variables for Google column numbers for bulk deletion because deleteColumns is 1-indexed, but apps script is 0-indexed
-  //       var googleSecondPassDeleteStart = second_pass_delete_start + 1;
-  //       var googleLastCol = lastColumn + 1;
-  //       var googleSecondPassNumberColsDelete = (googleLastCol - googleSecondPassDeleteStart);
-  //       newSheet.deleteColumns(googleSecondPassDeleteStart, googleSecondPassNumberColsDelete);
-  //     }
-  //     Logger.log("Yay! I am done working on " + newSheet.getSheetName());
-  //  }
+      // now bulk delete columns on the second pass
+      if (lastColumn - second_pass_delete_start != 0) {
+        // create variables for Google column numbers for bulk deletion because deleteColumns is 1-indexed, but apps script is 0-indexed
+        var googleSecondPassDeleteStart = second_pass_delete_start + 1;
+        var googleLastCol = lastColumn + 1;
+        var googleSecondPassNumberColsDelete = (googleLastCol - googleSecondPassDeleteStart);
+        newSheet.deleteColumns(googleSecondPassDeleteStart, googleSecondPassNumberColsDelete);
+      }
+      Logger.log("Yay! I am done working on " + newSheet.getSheetName());
+   }
 }
 
 //This is a function for getting the last column before data starts
