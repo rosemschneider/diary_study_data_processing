@@ -97,6 +97,16 @@ function start() {
     copiedSheet.deleteColumn(columnsToExcludeInIndex[j]);
   }
 
+  // Before we delete processed data, we'll get the lowest part number so we can bulk delete columns later
+  var partColumnIndex = find_column_index_from_column_name(copiedSheetHeader[0], columnName);
+  const uniqueValuesFull = getUniqueColumn(oldDataSheetFull, partColumnIndex);
+      uniqueValues.sort(function(a, b) {
+      return a - b;
+    });
+  
+  var lowest_part_num_full = Math.min(parseInt(uniqueValuesFull));
+
+
   // // Delete any rows less than or equal to the highest entry ID
   function deleteProcessedData(sheet, highestEntryRow) {
     var numberRowsToDelete = highestEntryRow - 1; 
@@ -111,7 +121,7 @@ function start() {
 
   // From here, we likely just want to continue as usual, except that we will be reading in from a different row
 
-    run_group_by(copiedNewSheetName, columnName);
+    run_group_by(copiedNewSheetName, columnName, lowest_part_num_full);
   }
 
 
@@ -126,7 +136,7 @@ function start() {
   // This function does the following: 
   // 1. Gets unique part values
   // 2. Filters data 
-  function run_group_by(sheetName, columnName) {
+  function run_group_by(sheetName, columnName, lowestPartNumberFullData) {
     // get active sheet, data on that sheet, and define where the header is on that sheet
     const sheet = SpreadsheetApp.getActive().getSheetByName(sheetName);
     const data = sheet.getDataRange().getValues();
@@ -143,10 +153,12 @@ function start() {
     });
 
     // Get the lowest Part value
-    const lowest_part_num = Math.min(parseInt(uniqueValues));
+    const lowest_part_num = lowestPartNumberFullData;
 
     // Define where we will start scanning data (L->R). This is the LAST column BEFORE data from Parts. 
     // Defining this flexibly because users may sometimes have non-data columns after "Part"
+
+    // need to get the lowest part number - this will need to come from the full dataset    
     const scanning_start_col = get_scanning_start_column(header[0], lowest_part_num);
 
     // Now start a for loop where we will (by each Part): 
