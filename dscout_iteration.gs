@@ -59,14 +59,13 @@ function start() {
     copiedSheet.deleteColumn(columnsToExcludeInIndex[j]);
   }
 
-  // Before we delete processed data, we'll get the lowest part number so we can bulk delete columns later
-  var partColumnIndex = find_column_index_from_column_name(copiedSheetHeader[0], columnName);
-  const uniqueValuesFull = getUniqueColumn(oldDataSheetFull, partColumnIndex);
-      uniqueValues.sort(function(a, b) {
-      return a - b;
-    });
-  
-  var lowest_part_num_full = Math.min(parseInt(uniqueValuesFull));
+  // // Before we delete processed data, we'll get the lowest part number so we can bulk delete columns later
+  // var partColumnIndex = find_column_index_from_column_name(copiedSheetHeader[0], columnName);
+  // const uniqueValuesFull = getUniqueColumn(oldDataSheetFull, partColumnIndex);
+  //     uniqueValuesFull.sort(function(a, b) {
+  //     return a - b;
+  //   });
+
 
 
   // // Delete any rows less than or equal to the highest entry ID
@@ -83,7 +82,7 @@ function start() {
 
   // From here, we likely just want to continue as usual, except that we will be reading in from a different row
 
-    run_group_by(copiedNewSheetName, columnName, lowest_part_num_full);
+    run_group_by(copiedNewSheetName, columnName);
   }
 
 
@@ -98,7 +97,7 @@ function start() {
   // This function does the following: 
   // 1. Gets unique part values
   // 2. Filters data 
-  function run_group_by(sheetName, columnName, lowestPartNumberFullData) {
+  function run_group_by(sheetName, columnName) {
     // get active sheet, data on that sheet, and define where the header is on that sheet
     const sheet = SpreadsheetApp.getActive().getSheetByName(sheetName);
     const data = sheet.getDataRange().getValues();
@@ -115,7 +114,8 @@ function start() {
     });
 
     // Get the lowest Part value
-    const lowest_part_num = lowestPartNumberFullData;
+    // Hardcoding this as 1 for now
+    const lowest_part_num = 1;
 
     // Define where we will start scanning data (L->R). This is the LAST column BEFORE data from Parts. 
     // Defining this flexibly because users may sometimes have non-data columns after "Part"
