@@ -8,7 +8,6 @@ function start() {
  var newDataSheetName = 'New_test'; // new data sheet - does not replace your processed data sheet
  const columnsToExclude = ['Scout Name', 'City', 'State', 'Postal Code', 'Education Level', 'Research Industry', 'Entry Headline', 'Time Zone', 'Latitude', 'Longitude', 'User Agent']; //make sure these columns are the same as the ones you initially removed
 
-
   //////////////////////////// DO NOT MODIFY ANYTHING BELOW FROM HERE unless you know what you are doing :D ////////// /////////
 
   // Get data and header for old data
@@ -18,6 +17,9 @@ function start() {
   var newSheetData = newDataSheetFull.getDataRange().getValues();
   const header = [oldSheetData[0]];
 
+  // Get sheet names for old data
+  const oldSheetNames = allSheetNames();
+  
   // Define the column in which to look for Entry IDs
   var entryIdColumn = 'Entry ID';
   var entryIdColumnIndex = find_column_index_from_column_name(header[0], entryIdColumn)
@@ -82,7 +84,7 @@ function start() {
 
   // From here, we likely just want to continue as usual, except that we will be reading in from a different row
 
-    run_group_by(copiedNewSheetName, columnName);
+    run_group_by(copiedNewSheetName, columnName, oldSheetNames);
   }
 
 
@@ -97,12 +99,11 @@ function start() {
   // This function does the following: 
   // 1. Gets unique part values
   // 2. Filters data 
-  function run_group_by(sheetName, columnName) {
+  function run_group_by(sheetName, columnName, processedSheetNames) {
     // get active sheet, data on that sheet, and define where the header is on that sheet
     const sheet = SpreadsheetApp.getActive().getSheetByName(sheetName);
     const data = sheet.getDataRange().getValues();
     const header = [data[0]]; 
-
 
     // Define the column in which to look for Part values
     const columnIndex = find_column_index_from_column_name(header[0], columnName);
@@ -149,12 +150,28 @@ function start() {
       newSheet.getRange(HEADERS_ROW_INDEX, 1, header.length, header[0].length).setValues(header);
       newSheet.getRange(HEADERS_ROW_INDEX + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
       SpreadsheetApp.flush();
+
+      // get the part number of the current working sheet 
+      var regex = /Part=([0-9]+)/;
+      var value = regex.exec(newSheet.getName())[0];
+      var value_str = Utilities.formatString(value);
+      Logger.log("The current part number is: " + value);
+
+      // now get the matching sheet in the OLD sheet names for this part
+      Logger.log(processedSheetNames);
+      for (var i=0; i<processedSheetNames.length; i++) {
+        Logger.log[processedSheetNames[i]];
+        if (processedSheetNames[i].indexOf(value_str) > -1) { 
+          var matchingProcessedSheet = processedSheetNames[i];
+          Logger.log("The matching processed sheet is: " + matchingProcessedSheet);
+        }
+      }
       
       //Get the first column for which we have data in this Part
       const first_data_col = get_first_column_part_data(header, uniqueValues[i][0], scanning_start_col);
 
       // BEGIN FIRST PASS
-      // If there are empty data columns before this column, delete them
+      // If there are empty data columns before this column, delete them 
       // Empty columns determined by looking at first column after our "scanning start" var and our "first data col" var
        if (first_data_col - (scanning_start_col + 1) != 0) { // If there are empty columns
          // create variables for Google column numbers for bulk deletion because deleteColumns is 1-indexed, but apps script is 0-indexed
@@ -320,4 +337,44 @@ function getUniqueColumn(sheet, column) {
  const uniqueValues = getUnique_(rg.getValues()).map(e => [e]);
  Logger.log("I found these parts in your data: '" + getColumnName(sheet, column) + "' => " + uniqueValues);
  return uniqueValues;
+}
+
+/*
+* Helper function for getting list of sheet names
+*/
+function allSheetNames() {
+  var out = []; 
+  var sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
+  for (var i=0; i<sheets.length; i++) {
+    var curSheetName = sheets[i].getName(); 
+    if(curSheetName.indexOf('Part') !== -1) {
+      out.push(sheets[i].getName()); 
+    }
+  }
+  Logger.log("The sheets are: " + out); 
+  return out;
+}
+
+/* 
+* Helper function for finding the right sheet name - matching old and updated sheet names
+*/
+function getMatchingSheetName(currentWorkingSheet, processedSheetNames) {
+  // get the current sheet name
+  var workingSheetName = currentWorkingSheet.getName();
+  // extract the part # we're on
+  var regex = /Part=([0-9]+)/;
+  var value = regex.exec(workingSheetName)[0];
+
+  // go through the processed sheet names and find the one which has the correct part number
+  for (var i=0; i<processedSheetNames.length; i++) {
+    if (processedSheetNames[i].indexOf(value)) {
+      var matchingProcessedSheet = processedSheetNames[i];
+      Logger.log("The matching processed sheet is: " + matchingProcessedSheet);
+      break;
+    }
+  }
+
+  Logger.log("The current working sheet is: " + workingSheetName);
+  Logger.log("The current part number is: " + value);
+  
 }
