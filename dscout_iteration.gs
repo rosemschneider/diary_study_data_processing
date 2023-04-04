@@ -152,18 +152,17 @@ function start() {
       SpreadsheetApp.flush();
 
       // get the part number of the current working sheet 
-      var regex = /Part=([0-9]+)/;
+      var regex = /Part=([0-9]+)/; 
       var value = regex.exec(newSheet.getName())[0];
       var value_str = Utilities.formatString(value);
-      Logger.log("The current part number is: " + value);
+      Logger.log("The current part number is: " + value); 
 
       // now get the matching sheet in the OLD sheet names for this part
-      Logger.log(processedSheetNames);
       for (var i=0; i<processedSheetNames.length; i++) {
-        Logger.log[processedSheetNames[i]];
         if (processedSheetNames[i].indexOf(value_str) > -1) { 
-          var matchingProcessedSheet = processedSheetNames[i];
-          Logger.log("The matching processed sheet is: " + matchingProcessedSheet);
+          var matchingProcessedSheetName = processedSheetNames[i];
+          Logger.log("The matching processed sheet is: " + matchingProcessedSheetName);
+          break;
         }
       }
       
@@ -202,6 +201,19 @@ function start() {
         var googleSecondPassNumberColsDelete = (googleLastCol - googleSecondPassDeleteStart);
         newSheet.deleteColumns(googleSecondPassDeleteStart, googleSecondPassNumberColsDelete);
       }
+
+      // Now we need to move everything from current working sheet to old sheet, starting just below last row for which we have data
+      var processedSheet = SpreadsheetApp.getActive().getSheetByName(matchingProcessedSheetName);
+      var processedSheetLastRow = processedSheet.getLastRow();
+      
+      // get the data from the new sheet and write to the old sheet
+      var final_pass_data = newSheet.getRange(HEADERS_ROW_INDEX + 1, 1, newSheet.getLastRow(), newSheet.getLastColumn()).getValues();
+      // newSheet.getRange(HEADERS_ROW_INDEX + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
+      Logger.log("Here is the final pass data: " + final_pass_data);
+      
+
+
+
       Logger.log("Yay! I am done working on " + newSheet.getSheetName());
    }
 }
@@ -353,28 +365,4 @@ function allSheetNames() {
   }
   Logger.log("The sheets are: " + out); 
   return out;
-}
-
-/* 
-* Helper function for finding the right sheet name - matching old and updated sheet names
-*/
-function getMatchingSheetName(currentWorkingSheet, processedSheetNames) {
-  // get the current sheet name
-  var workingSheetName = currentWorkingSheet.getName();
-  // extract the part # we're on
-  var regex = /Part=([0-9]+)/;
-  var value = regex.exec(workingSheetName)[0];
-
-  // go through the processed sheet names and find the one which has the correct part number
-  for (var i=0; i<processedSheetNames.length; i++) {
-    if (processedSheetNames[i].indexOf(value)) {
-      var matchingProcessedSheet = processedSheetNames[i];
-      Logger.log("The matching processed sheet is: " + matchingProcessedSheet);
-      break;
-    }
-  }
-
-  Logger.log("The current working sheet is: " + workingSheetName);
-  Logger.log("The current part number is: " + value);
-  
 }
