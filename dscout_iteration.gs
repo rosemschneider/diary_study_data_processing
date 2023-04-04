@@ -87,7 +87,6 @@ function start() {
     run_group_by(copiedNewSheetName, columnName, oldSheetNames);
   }
 
-
   function find_column_index_from_column_name(header, columnName) {
    for (var i = 0; i < header.length; i++) {
      if (header[i] == columnName) {
@@ -158,18 +157,12 @@ function start() {
       Logger.log("The current part number is: " + value); 
 
       // now get the matching sheet in the OLD sheet names for this part
-      for (var i=0; i<processedSheetNames.length; i++) {
-        if (processedSheetNames[i].indexOf(value_str) > -1) { 
-          var matchingProcessedSheetName = processedSheetNames[i];
-          Logger.log("The matching processed sheet is: " + matchingProcessedSheetName);
-          break;
-        }
-      }
+      var matchingSheetName = getMatchingSheet(value_str, processedSheetNames);
       
       //Get the first column for which we have data in this Part
       const first_data_col = get_first_column_part_data(header, uniqueValues[i][0], scanning_start_col);
 
-      // BEGIN FIRST PASS
+      // BEGIN FIRST PASS - DELETING COLUMNS BEFORE DATA
       // If there are empty data columns before this column, delete them 
       // Empty columns determined by looking at first column after our "scanning start" var and our "first data col" var
        if (first_data_col - (scanning_start_col + 1) != 0) { // If there are empty columns
@@ -184,7 +177,7 @@ function start() {
       // Alert so we know this has been done
       Logger.log("I am 50% done working on " + newSheet.getSheetName());
 
-      // BEGIN SECOND PASS
+      // BEGIN SECOND PASS - DELETING COLUMNS AFTER DATA
       // Because we've had some deletions, we need to update the header so we're indexing appropriately
       const second_pass_data = newSheet.getDataRange().getValues();
       const second_pass_header = [second_pass_data[0]];
@@ -202,18 +195,18 @@ function start() {
         newSheet.deleteColumns(googleSecondPassDeleteStart, googleSecondPassNumberColsDelete);
       }
 
-      // Now we need to move everything from current working sheet to old sheet, starting just below last row for which we have data
-      var processedSheet = SpreadsheetApp.getActive().getSheetByName(matchingProcessedSheetName);
+      // FINAL PASS - MERGING NEW AND OLD DATA
+      // First, on the OLD sheet, get the last row on which we have data
+      var processedSheet = SpreadsheetApp.getActive().getSheetByName(matchingSheetName);
       var processedSheetLastRow = processedSheet.getLastRow();
+
+      // Now, on the NEW sheet, get the data. We have to update it because of our bulk deletions
+      const final_pass_data = newSheet.getRange(HEADERS_ROW_INDEX+1, 1, newSheet.getLastRow(), newSheet.getLastColumn()).getValues();
+        
+      // write data from the new sheet to the old sheet
+      processedSheet.getRange(processedSheetLastRow + 1, 1, final_pass_data.length, final_pass_data[0].length).setValues(final_pass_data);
+      Logger.log("I have written new data to old data sheet");
       
-      // get the data from the new sheet and write to the old sheet
-      var final_pass_data = newSheet.getRange(HEADERS_ROW_INDEX + 1, 1, newSheet.getLastRow(), newSheet.getLastColumn()).getValues();
-      // newSheet.getRange(HEADERS_ROW_INDEX + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
-      Logger.log("Here is the final pass data: " + final_pass_data);
-      
-
-
-
       Logger.log("Yay! I am done working on " + newSheet.getSheetName());
    }
 }
@@ -365,4 +358,18 @@ function allSheetNames() {
   }
   Logger.log("The sheets are: " + out); 
   return out;
+}
+
+/*
+* Helper function for getting the matching sheet from Part number of active sheet
+*/ 
+function getMatchingSheet(activePartNumberString, processedSheetNames) {
+  for (var i=0; i<processedSheetNames.length; i++) {
+        if (processedSheetNames[i].indexOf(activePartNumberString) > -1) { 
+          var matchingProcessedSheetName = processedSheetNames[i];
+          break;
+        }
+      }
+  Logger.log("The matching processed sheet is: " + matchingProcessedSheetName);
+  return matchingProcessedSheetName;
 }
