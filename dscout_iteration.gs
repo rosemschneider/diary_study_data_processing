@@ -23,7 +23,6 @@ function start() {
   // Define the column in which to look for Entry IDs
   var entryIdColumn = 'Entry ID';
   var entryIdColumnIndex = find_column_index_from_column_name(header[0], entryIdColumn)
-  Logger.log("This is the EntryId Column index: " + entryIdColumnIndex);
 
   // Get the highest entry from the old data seet
   const maxEntry = getHighestEntryId(oldDataSheetFull, entryIdColumnIndex);
@@ -43,7 +42,7 @@ function start() {
   // get the row with the highest Entry ID
   var highestEntryIdRow = getHighestEntryRow(copiedData, entryIdColumnIndex, maxEntry);
 
-//on the updated processed data sheet, exclude columns to exclude so that it matches the original sheet
+  //on the updated processed data sheet, exclude columns to exclude so that it matches the original sheet
   const columnName = 'Part';
   P_COL_START -= columnsToExclude.length;
 
@@ -61,16 +60,7 @@ function start() {
     copiedSheet.deleteColumn(columnsToExcludeInIndex[j]);
   }
 
-  // // Before we delete processed data, we'll get the lowest part number so we can bulk delete columns later
-  // var partColumnIndex = find_column_index_from_column_name(copiedSheetHeader[0], columnName);
-  // const uniqueValuesFull = getUniqueColumn(oldDataSheetFull, partColumnIndex);
-  //     uniqueValuesFull.sort(function(a, b) {
-  //     return a - b;
-  //   });
-
-
-
-  // // Delete any rows less than or equal to the highest entry ID
+  // On the new sheet, delete any rows less than or equal to the highest entry ID
   function deleteProcessedData(sheet, highestEntryRow) {
     var numberRowsToDelete = highestEntryRow - 1; 
     sheet.deleteRows(HEADERS_ROW_INDEX + 1, numberRowsToDelete);
@@ -78,15 +68,16 @@ function start() {
 
   deleteProcessedData(copiedSheet, highestEntryIdRow);
 
-  // Because we have deleted columns on the processed sheet, we now need to basically redo the process of splitting data
+  // Because we have deleted columns on the processed sheet, we now need to redo the process of splitting data
   // we'll copy that new data to the already existing sheets
   // then delete the sheets we've created in the process
 
-  // From here, we likely just want to continue as usual, except that we will be reading in from a different row
+  // From here, we want to continue as usual, except that we will be reading in from a different row
 
-    run_group_by(copiedNewSheetName, columnName, oldSheetNames);
+    run_group_by(copiedNewSheetName, oldDataSheetName, columnName, oldSheetNames);
   }
 
+  //?
   function find_column_index_from_column_name(header, columnName) {
    for (var i = 0; i < header.length; i++) {
      if (header[i] == columnName) {
@@ -95,10 +86,8 @@ function start() {
    }
   }
 
-  // This function does the following: 
-  // 1. Gets unique part values
-  // 2. Filters data 
-  function run_group_by(sheetName, columnName, processedSheetNames) {
+  // Data splitting and merging
+  function run_group_by(sheetName, originalDataSheetName, columnName, processedSheetNames) { 
     // get active sheet, data on that sheet, and define where the header is on that sheet
     const sheet = SpreadsheetApp.getActive().getSheetByName(sheetName);
     const data = sheet.getDataRange().getValues();
@@ -128,14 +117,7 @@ function start() {
     // 2. Created a new sheet for that data
     // 3. Get the first column for which we have data. IF there are empty data columns (ie data coming from Parts) before that, bulk delete them. This is the FIRST PASS.
     // 4. After we have anything unnecesary BEFORE the data deleted, we do a SECOND PASS to delete anything unnecessary AFTER the data.
-
-    // for (var i = 0; i < uniqueValues.length; i++) {
-    //   var testRows = [];
-    //   // if(data[i][columnIndex] == uniqueValues[i][0]) {
-    //   //   testRows.push[data[i]];
-    //   // }
-    //   Logger.log("Here are the test rows:" + data[i][columnIndex-1]);
-    // }
+    // 5. ITERATION-specific: We do a final pass to merge the new and old data
      
     // Begin for loop
     for (var i = 0; i < uniqueValues.length; i++) {
@@ -148,21 +130,30 @@ function start() {
       const newSheet = createSheet(sheetName+'_'+getColumnName(sheet, columnIndex)+'='+uniqueValues[i][0]);
       newSheet.getRange(HEADERS_ROW_INDEX, 1, header.length, header[0].length).setValues(header);
       newSheet.getRange(HEADERS_ROW_INDEX + 1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
-      SpreadsheetApp.flush();
 
-      // get the part number of the current working sheet 
+      // If we do not have a matching old sheet for this part, then create that sheet as well
+      // First, get the part number of the current working sheet 
       var regex = /Part=([0-9]+)/; 
       var value = regex.exec(newSheet.getName())[0];
       var value_str = Utilities.formatString(value);
       Logger.log("The current part number is: " + value); 
 
-      // now get the matching sheet in the OLD sheet names for this part
+      // Second, check to see if we have a matching old sheet
       var matchingSheetName = getMatchingSheet(value_str, processedSheetNames);
-      
-      //Get the first column for which we have data in this Part
-      const first_data_col = get_first_column_part_data(header, uniqueValues[i][0], scanning_start_col);
+
+      // // Finally, if we do NOT have a matching sheet name, then create one
+      // if (matchingSheetName == false) {
+      //   Logger.log("I have checked that the matching sheet name is false");
+      //   const addedSheet = createSheet("processed_" + originalDataSheetName + getColumnName(sheet, columnIndex)+'='+uniqueValues[i][0]); 
+      //   addedSheet.getRange(HEADERS_ROW_INDEX, 1, header.length, header[0].length).setValues(header); // add header
+      //   // get the matching sheet name
+      //   var matchingSheetName = getMatchingSheet(value_str, processedSheetNames);
+      // }
+      SpreadsheetApp.flush();
 
       // BEGIN FIRST PASS - DELETING COLUMNS BEFORE DATA
+        //Get the first column for which we have data in this Part
+      const first_data_col = get_first_column_part_data(header, uniqueValues[i][0], scanning_start_col);
       // If there are empty data columns before this column, delete them 
       // Empty columns determined by looking at first column after our "scanning start" var and our "first data col" var
        if (first_data_col - (scanning_start_col + 1) != 0) { // If there are empty columns
@@ -196,18 +187,30 @@ function start() {
       }
 
       // FINAL PASS - MERGING NEW AND OLD DATA
+      // First - easy case: When we don't have a matching sheet name, rename current sheet and do nothing else
+      if (matchingSheetName == false) {
+        SpreadsheetApp.getActive().getSheetByName(sheetName+'_'+getColumnName(sheet, columnIndex)+'='+uniqueValues[i][0]).setName("processed_" + originalDataSheetName + '_' + getColumnName(sheet, columnIndex)+'='+uniqueValues[i][0]);
+        Logger.log("I renamed the sheet");
+      } else { // if we DO have a matching sheet name
+
       // First, on the OLD sheet, get the last row on which we have data
       var processedSheet = SpreadsheetApp.getActive().getSheetByName(matchingSheetName);
       var processedSheetLastRow = processedSheet.getLastRow();
 
-      // Now, on the NEW sheet, get the data. We have to update it because of our bulk deletions
+         // Now, on the NEW sheet, get the data. We have to update it because of our bulk deletions
       const final_pass_data = newSheet.getRange(HEADERS_ROW_INDEX+1, 1, newSheet.getLastRow(), newSheet.getLastColumn()).getValues();
-        
       // write data from the new sheet to the old sheet
       processedSheet.getRange(processedSheetLastRow + 1, 1, final_pass_data.length, final_pass_data[0].length).setValues(final_pass_data);
-      Logger.log("I have written new data to old data sheet");
-      
-      Logger.log("Yay! I am done working on " + newSheet.getSheetName());
+
+      // delete the working sheet
+      var ss = SpreadsheetApp.getActive();
+      var workingSheet = ss.getSheetByName(sheetName+'_'+getColumnName(sheet, columnIndex)+'='+uniqueValues[i][0]);
+      ss.deleteSheet(workingSheet);
+      Logger.log("I have written new data to old data sheet and deleted the working sheet");
+      }
+
+      //Alert that we're done
+      Logger.log("Yay! I am done working on " + value_str);
    }
 }
 
@@ -356,18 +359,21 @@ function allSheetNames() {
       out.push(sheets[i].getName()); 
     }
   }
-  Logger.log("The sheets are: " + out); 
   return out;
 }
 
 /*
-* Helper function for getting the matching sheet from Part number of active sheet
+* Helper function for getting the matching sheet from Part number of active sheet.
+* This returns false if there is not a matching sheet name
+* If there is not a matching sheet name, then we need to create one
 */ 
 function getMatchingSheet(activePartNumberString, processedSheetNames) {
   for (var i=0; i<processedSheetNames.length; i++) {
         if (processedSheetNames[i].indexOf(activePartNumberString) > -1) { 
           var matchingProcessedSheetName = processedSheetNames[i];
           break;
+        } else {
+          var matchingProcessedSheetName = false;
         }
       }
   Logger.log("The matching processed sheet is: " + matchingProcessedSheetName);
