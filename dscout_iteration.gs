@@ -1,8 +1,28 @@
 HEADERS_ROW_INDEX = 1
 P_COL_START = 27
 
+/* 
+* Helper function for getting input about whether this is an initial read-in or iteration
+*/
+function displayPrompt() {
+  var ui = SpreadsheetApp.getUi();
+  var response = ui.alert('Is this your FIRST TIME splitting this dataset (meaning that you only have one sheet containing your unprocessed data?', ui.ButtonSet.YES_NO);
+
+  // Process the user's response.
+  if (response == ui.Button.YES) {
+    var result = "Initial";
+  } else {
+    var result = "Update";
+  }
+}
 
 function start() {
+  var initialOrUpdate = displayPrompt();
+
+  // TODO: if else for initial or update
+
+
+
  // Please update line 7 and 8 to match your sheet data and reflect what you want!
  var oldDataSheetName = 'Test'; // old data sheet of processed data
  var newDataSheetName = 'New_test'; // new data sheet - does not replace your processed data sheet
